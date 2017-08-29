@@ -60,6 +60,26 @@ type Consumer struct {
 	ClientReader ConsumerSource
 	// ServerReader exposes data send by the server to the client.
 	ServerReader ConsumerSource
+
+	eventBuf []Event
+}
+
+// AddEvent buffers an event to be sent to the event handler.
+// If the buffer fills, all events in the buffer are flushed immediately.
+func (c *Consumer) AddEvent(evt Event) {
+	if c.eventBuf == nil {
+		c.eventBuf = make([]Event, 0, 128)
+	}
+	c.eventBuf = append(c.eventBuf, evt)
+	if len(c.eventBuf) == cap(c.eventBuf) {
+		c.FlushEvents()
+	}
+}
+
+// FlushEvents immediately sends all events in the buffer to the event handler.
+func (c *Consumer) FlushEvents() {
+	c.Handler(c.eventBuf)
+	c.eventBuf = c.eventBuf[:0]
 }
 
 // Event is a single event in a datastore conversation
@@ -73,4 +93,4 @@ type Event struct {
 }
 
 // EventHandler consumes a single event.
-type EventHandler func(evt Event)
+type EventHandler func(evts []Event)
