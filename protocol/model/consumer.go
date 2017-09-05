@@ -1,14 +1,17 @@
 package model
 
 import (
+	"fmt"
 	"github.com/box/memsniff/log"
 	"github.com/google/gopacket/tcpassembly"
 	"io"
+	"time"
 )
 
 // EventType described what sort of event has occurred.
 type EventType int
 
+//go:generate stringer -type=EventType
 const (
 	// EventUnknown is an unhandled event.
 	EventUnknown EventType = iota
@@ -41,6 +44,10 @@ type Reader interface {
 	// The text returned from ReadLine does not include the line end ("\r\n" or "\n").
 	// No indication or error is given if the input ends without a final line end.
 	ReadLine() ([]byte, error)
+
+	// Seen returns the timestamp at which the last packet read was captured.
+	// This usually reflects the end of the data returned from the most recent read operation.
+	Seen() time.Time
 }
 
 // ConsumerSource buffers tcpassembly.Stream data and exposes it as a closeable Reader.
@@ -78,8 +85,16 @@ func (c *Consumer) AddEvent(evt Event) {
 
 // FlushEvents immediately sends all events in the buffer to the event handler.
 func (c *Consumer) FlushEvents() {
-	c.Handler(c.eventBuf)
-	c.eventBuf = c.eventBuf[:0]
+	if len(c.eventBuf) > 0 {
+		c.Handler(c.eventBuf)
+		c.eventBuf = c.eventBuf[:0]
+	}
+}
+
+func (c *Consumer) Log(items ...interface{}) {
+	if c.Logger != nil {
+		c.Logger.Log(items...)
+	}
 }
 
 // Event is a single event in a datastore conversation
@@ -90,6 +105,19 @@ type Event struct {
 	Key string
 	// Size of the datastore value affected by this event.
 	Size int
+	// StartTime is the timestamp when the end of the request was captured.
+	Start time.Time
+	// EndTime is the timestamp when the end of the response was captured.
+	End time.Time
+}
+
+// Duration returns the amount of time the event took from end of request to end of response.
+func (e Event) Duration() time.Duration {
+	return e.End.Sub(e.Start)
+}
+
+func (e Event) String() string {
+	return fmt.Sprintf("{%v %v(%d) %v}", e.Type, e.Key, e.Size, e.Duration())
 }
 
 // EventHandler consumes a single event.

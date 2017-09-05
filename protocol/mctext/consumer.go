@@ -5,6 +5,7 @@ import (
 	"github.com/box/memsniff/protocol/model"
 	"io"
 	"strconv"
+	"time"
 )
 
 const (
@@ -30,36 +31,33 @@ func (c *Consumer) Run() {
 			return
 		}
 		c.log("read command:", string(line))
-		fields := bytes.Split(line, []byte(" "))
-		if len(fields) <= 0 {
-			continue
-		}
-
-		switch string(fields[0]) {
-		case "get", "gets":
-			err = c.handleGet(fields[1:])
-			if err != nil {
-				c.log("error processing stream:", err)
-				return
-			}
-		case "set", "add", "replace", "append", "prepend":
-			err = c.handleSet(fields[1:])
-			if err != nil {
-				c.log("error processing stream:", err)
-				return
-			}
-		case "quit":
-			return
-		default:
-			err = c.discardResponse()
-			if err != nil {
-				c.log("error processing unknown command", string(line), ":", err)
-			}
+		if len(line) > 0 {
+			c.handleCommand(line, c.ClientReader.Seen())
 		}
 	}
 }
 
-func (c *Consumer) handleGet(fields [][]byte) error {
+func (c *Consumer) handleCommand(line []byte, start time.Time) {
+	fields := bytes.Split(line, []byte(" "))
+	switch string(fields[0]) {
+	case "get", "gets":
+		if err := c.handleGet(fields[1:], start); err != nil {
+			c.log("error processing stream:", err)
+		}
+	case "set", "add", "replace", "append", "prepend":
+		err := c.handleSet(fields[1:])
+		if err != nil {
+			c.log("error processing stream:", err)
+		}
+	case "quit":
+	default:
+		if err := c.discardResponse(); err != nil {
+			c.log("error processing unknown command", string(line), ":", err)
+		}
+	}
+}
+
+func (c *Consumer) handleGet(fields [][]byte, start time.Time) error {
 	if len(fields) < 1 {
 		return c.discardResponse()
 	}
@@ -78,9 +76,11 @@ func (c *Consumer) handleGet(fields [][]byte) error {
 				return err
 			}
 			evt := model.Event{
-				Type: model.EventGetHit,
-				Key:  string(key),
-				Size: size,
+				Type:  model.EventGetHit,
+				Key:   string(key),
+				Size:  size,
+				Start: start,
+				End:   c.ServerReader.Seen(),
 			}
 			c.log("sending event:", evt)
 			c.addEvent(evt)
@@ -124,7 +124,5 @@ func (c *Consumer) addEvent(evt model.Event) {
 }
 
 func (c *Consumer) log(items ...interface{}) {
-	if c.Logger != nil {
-		c.Logger.Log(items...)
-	}
+	(*model.Consumer)(c).Log(items...)
 }

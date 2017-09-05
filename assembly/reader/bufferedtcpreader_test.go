@@ -317,19 +317,6 @@ func TestCloseAllowsWritesToProceed(t *testing.T) {
 	r.ReassemblyComplete()
 }
 
-func TestReadAfterClosePanics(t *testing.T) {
-	defer func() {
-		if recover() == nil {
-			t.Fail()
-		}
-	}()
-	r := New()
-	r.Close()
-	// expect panic
-	_, _ = r.ReadLine()
-	t.Fail()
-}
-
 func TestCloseDuringFlush(t *testing.T) {
 	r := New()
 	done := make(chan bool)

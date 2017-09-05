@@ -15,8 +15,16 @@ func TestTextMulti(t *testing.T) {
 		"world",
 	}
 	testReadText(t, lines, []model.Event{
-		{model.EventGetHit, "key1", 5},
-		{model.EventGetHit, "key2", 5},
+		{
+			Type: model.EventGetHit,
+			Key:  "key1",
+			Size: 5,
+		},
+		{
+			Type: model.EventGetHit,
+			Key:  "key2",
+			Size: 5,
+		},
 	})
 }
 
@@ -26,7 +34,11 @@ func TestTextEmptyValue(t *testing.T) {
 		"",
 	}
 	testReadText(t, lines, []model.Event{
-		{model.EventGetHit, "key3|foo", 0},
+		{
+			Type: model.EventGetHit,
+			Key:  "key3|foo",
+			Size: 0,
+		},
 	})
 }
 
@@ -37,7 +49,11 @@ func TestTextIncompleteHeader(t *testing.T) {
 		"VALUE ",
 	}
 	testReadText(t, lines, []model.Event{
-		{model.EventGetHit, "key1", 5},
+		{
+			Type: model.EventGetHit,
+			Key:  "key1",
+			Size: 5,
+		},
 	})
 }
 
@@ -47,16 +63,22 @@ func TestTextIncompleteBody(t *testing.T) {
 		"wor",
 	}
 	testReadText(t, lines, []model.Event{
-		{model.EventGetHit, "key1", 5},
+		{
+			Type: model.EventGetHit,
+			Key:  "key1",
+			Size: 5,
+		},
 	})
 }
 
 func testReadText(t *testing.T, lines []string, expected []model.Event) {
-	handler := func(e model.Event) {
-		if e != expected[0] {
-			t.Error("Expected", expected[0], "got", e)
+	handler := func(evts []model.Event) {
+		for _, e := range evts {
+			if e != expected[0] {
+				t.Error("Expected", expected[0], "got", e)
+			}
+			expected = expected[1:]
 		}
-		expected = expected[1:]
 	}
 	client, server := reader.NewPair()
 	r := Consumer{
@@ -75,6 +97,7 @@ func testReadText(t *testing.T, lines []string, expected []model.Event) {
 	for _, l := range lines {
 		r.ServerReader.Reassembled(reassemblyString(l + "\r\n"))
 	}
+	r.ServerReader.Reassembled(reassemblyString("END\r\n"))
 	r.ClientReader.ReassemblyComplete()
 	r.ServerReader.ReassemblyComplete()
 

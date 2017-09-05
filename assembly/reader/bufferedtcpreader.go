@@ -7,6 +7,7 @@ import (
 	"github.com/google/gopacket/tcpassembly"
 	"io"
 	"sync"
+	"time"
 )
 
 const (
@@ -89,14 +90,17 @@ type TCPReaderStream struct {
 	// partially consumed Reassembly
 	current *tcpassembly.Reassembly
 	// buf accumulates blocks that extends over multiple Reassemblies in ReadN and ReadLine
-	buf     *bytes.Buffer
+	buf *bytes.Buffer
+	// seenEOF is set to true by the reader side when it sees nil on filled
 	seenEOF bool
-	closed  chan struct{}
+	// this channel is closed by the read side when Close() is called
+	closed chan struct{}
 
 	LossErrors bool
 }
 
-// NewPair creates an associated pair of TCPReaderStreams.
+// NewPair creates an associated pair of TCPReaderStreams that will be flushed in unison.
+// The returned streams must not be written to simultaneously from different threads.
 func NewPair() (client, server *TCPReaderStream) {
 	client = New()
 	server = New()
@@ -121,6 +125,8 @@ func New() *TCPReaderStream {
 // is falling behind.
 func (r *TCPReaderStream) Reassembled(reassembly []tcpassembly.Reassembly) {
 	if r.isClosed() {
+		// Close started a goroutine to capture any ReassemblyQueues and return then to the pool.
+		// Let it know that no more are coming, so the goroutine can complete.
 		if !r.sentEOF() {
 			r.sendEOF()
 		}
@@ -164,7 +170,7 @@ func (r *TCPReaderStream) sendEOF() {
 	r.writeBatch.clear()
 	reassemblyQueuePool.Put(r.writeBatch)
 	r.writeBatch = nil
-	r.filled <- r.writeBatch
+	r.filled <- nil
 }
 
 func (r *TCPReaderStream) flushBoth() {
@@ -363,6 +369,15 @@ func (r *TCPReaderStream) Discard(n int) (discarded int, err error) {
 		}
 	}
 	return n, nil
+}
+
+// Seen returns the timestamp at which the last packet read was captured.
+// This usually reflects the end of the data returned from the most recent read operation.
+func (r *TCPReaderStream) Seen() time.Time {
+	if r.current == nil {
+		return time.Time{}
+	}
+	return r.current.Seen
 }
 
 // Close releases held resources, and discards any remaining data.
