@@ -4,9 +4,9 @@ package model
 
 import "fmt"
 
-const _EventType_name = "EventUnknownEventGetHitEventGetMiss"
+const _EventType_name = "EventUnknownEventCommandExecutedEventGetHitEventGetMiss"
 
-var _EventType_index = [...]uint8{0, 12, 23, 35}
+var _EventType_index = [...]uint8{0, 12, 32, 43, 55}
 
 func (i EventType) String() string {
 	if i < 0 || i >= EventType(len(_EventType_index)-1) {

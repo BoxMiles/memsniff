@@ -15,6 +15,8 @@ type EventType int
 const (
 	// EventUnknown is an unhandled event.
 	EventUnknown EventType = iota
+	// EventCommandExecuted is any command, useful for latency analysis
+	EventCommandExecuted
 	// EventGetHit is a successful data retrieval that returned data.
 	EventGetHit
 	// EventGetMiss is a data retrieval that did not result in data.
@@ -28,6 +30,10 @@ type Reader interface {
 	// Discard skips the next n bytes, returning the number of bytes discarded.
 	// If Discard skips fewer than n bytes, it also returns an error.
 	Discard(n int) (discarded int, err error)
+
+	// Peek returns up to n bytes of the next data from r, without
+	// advancing the stream.
+	Peek(n int) ([]byte, error)
 
 	// ReadN returns the next n bytes.
 	//
