@@ -2,6 +2,12 @@
 
 
 [[projects]]
+  name = "github.com/go-redis/redis"
+  packages = [".","internal","internal/consistenthash","internal/hashtag","internal/pool","internal/proto"]
+  revision = "74d5147d860804ea34633071d0c91a7f4b0b5c3a"
+  version = "v6.6.0"
+
+[[projects]]
   name = "github.com/google/gopacket"
   packages = [".","layers","pcap","tcpassembly","tcpassembly/tcpreader"]
   revision = "7d9ba85c47bb41298fed10f5769f793741de187f"
@@ -28,6 +34,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "6298e6c66bc642af0b82e8dadf4ea750cede91d1370b90d350b1091201e6377a"
+  inputs-digest = "8d699e1eb0f1b59ae82bf92c1eede888266af00e2d9003712775e10ce7dac0bd"
   solver-name = "gps-cdcl"
   solver-version = 1
