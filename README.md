@@ -38,7 +38,6 @@ directory:
 
 ```shell
 $ go get github.com/box/memsniff
-$ go build github.com/box/memsniff
 ```
 
 You will find a compiled binary at `$GOPATH/bin/memsniff`,
@@ -79,6 +78,7 @@ active:
 Want to contribute? First have a look at
 [CONTRIBUTING.md](https://github.com/box/memsniff/blob/master/CONTRIBUTING.md).
 
+
 #### Running the tests
 
 `memsniff` uses the standard Go testing framework:
@@ -89,30 +89,27 @@ $ go test ./...
 ...
 ok  	github.com/box/memsniff/vendor/github.com/spf13/pflag	0.067s
 ```
+
 3rd party package dependencies are in the `vendor` directory, and you can
-significantly speed up test execution time by bypassing this folder.
-
-`memsniff` uses [Glide](https://github.com/Masterminds/glide) to manage its
-dependencies, and if you have it installed, you can easily test just
-`memsniff`'s packages with Glide's `novendor` command:
+significantly speed up test execution time by bypassing this folder.  You can do
+this with a little `grep` magic:
 
 ```shell
-$ go test $(glide nv)
-?   	github.com/box/memsniff/analysis	[no test files]
-...
-ok  	github.com/box/memsniff/protocol	0.009s
-?   	github.com/box/memsniff	[no test files])
-```
-
-Alternatively, you can do much the same thing with a little `grep` magic:
-
-```shell
-$ go test $( go list ./... | grep -v /vendor/ )
+$ go test $( go list ./... | grep -v box/memsniff/vendor/ )
 ?   	github.com/box/memsniff	[no test files]
 ...
 ?   	github.com/box/memsniff/presentation	[no test files]
 ok  	github.com/box/memsniff/protocol	0.009s
 $
+```
+
+The Makefile also provides a `test` target to save you a bit of typing:
+
+```shell
+$ make test
+...
+ok  	github.com/box/memsniff/protocol/mctext	0.188s
+?   	github.com/box/memsniff/protocol/model	[no test files]
 ```
 
 
