@@ -35,7 +35,7 @@ func (b *BlockBuffer) BytesRemaining() int {
 	return cap(b.data) - len(b.data)
 }
 
-// Block returns a slice refenencing block n, indexed from 0.
+// Block returns a slice referencing block n, indexed from 0.
 // Any modifications to the returned slice modify the contents of the buffer.
 func (b *BlockBuffer) Block(n int) []byte {
 	start := 0
@@ -67,16 +67,12 @@ func (b *BlockBuffer) Append(data []byte) error {
 	if len(b.offsets) >= cap(b.offsets) {
 		return ErrBlocksFull
 	}
-	start := len(b.data)
-	end := len(b.data) + len(data)
-	if end > cap(b.data) {
+	if len(b.data)+len(data) > cap(b.data) {
 		return ErrBytesFull
 	}
 
-	b.data = b.data[:end]
-	copy(b.data[start:], data)
-	b.offsets = b.offsets[:len(b.offsets)+1]
-	b.offsets[len(b.offsets)-1] = end
+	b.data = append(b.data, data...)
+	b.offsets = append(b.offsets, len(b.data))
 
 	return nil
 }
@@ -103,7 +99,7 @@ func (pb *PacketBuffer) Append(pd PacketData) error {
 	if err != nil {
 		return err
 	}
-	pb.cis[len(pb.BlockBuffer.offsets)-1] = pd.Info
+	pb.cis[pb.PacketLen()-1] = pd.Info
 	return nil
 }
 
