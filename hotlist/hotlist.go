@@ -51,13 +51,13 @@ func orderedTop(k int, unordered map[Item]int) []Entry {
 	}
 	ordered := make(descByTotalWeight, 0, len(unordered))
 	for item, count := range unordered {
+		// For sorting purposes, precompute total weight
 		ordered = append(ordered, itemCount{item, count, item.Weight() * count})
 	}
 	sort.Sort(ordered)
 
 	entries := make([]Entry, 0, len(ordered))
 	for _, ic := range ordered {
-		// For sorting purposes, precompute total weight
 		entries = append(entries, ic)
 	}
 
