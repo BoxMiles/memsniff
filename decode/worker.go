@@ -42,7 +42,7 @@ func (w *worker) buf() *capture.PacketBuffer {
 
 // work begins work on the first count elements of the worker's capture buffer.
 func (w *worker) work() {
-	if w.pb.PacketLen() > 0 {
+	if w.pb.Len() > 0 {
 		w.workReady <- struct{}{}
 	} else {
 		// no work to do, just rejoin the WorkerQueue

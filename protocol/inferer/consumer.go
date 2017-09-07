@@ -9,6 +9,8 @@ import (
 // Consumer inspects the first byte of a connection and attempts to guess the correct protocol.
 type Consumer model.Consumer
 
+// Run reads the conversation and returns at the close of the conversation.
+// The client- and server-side readers are closed before Run returns.
 func (c *Consumer) Run() {
 	defer c.ClientReader.Close()
 	defer c.ServerReader.Close()

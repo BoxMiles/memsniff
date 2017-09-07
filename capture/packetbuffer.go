@@ -46,8 +46,13 @@ func (b *BlockBuffer) Block(n int) []byte {
 	return b.data[start:end:end]
 }
 
-// BlockLen returns the number of blocks currently stored in the buffer.
-func (b *BlockBuffer) BlockLen() int {
+// Cap returns the maximum number of blocks (not bytes) this buffer can hold.
+func (b *BlockBuffer) Cap() int {
+	return cap(b.offsets)
+}
+
+// Len returns the number of blocks currently stored in the buffer.
+func (b *BlockBuffer) Len() int {
 	return len(b.offsets)
 }
 
@@ -99,22 +104,12 @@ func (pb *PacketBuffer) Append(pd PacketData) error {
 	if err != nil {
 		return err
 	}
-	pb.cis[pb.PacketLen()-1] = pd.Info
+	pb.cis[pb.Len()-1] = pd.Info
 	return nil
 }
 
-// PacketCap returns the capacity for packets in the PacketBuffer.
-func (pb *PacketBuffer) PacketCap() int {
-	return cap(pb.BlockBuffer.offsets)
-}
-
-// PacketLen returns the number of packets in the PacketBuffer.
-func (pb *PacketBuffer) PacketLen() int {
-	return pb.BlockBuffer.BlockLen()
-}
-
 // Packet returns the packet at the specified index, which must be
-// less than PacketLen.  The Data field of the returned PacketData
+// less than Len.  The Data field of the returned PacketData
 // points into this PacketBuffer and must not be modified.
 func (pb *PacketBuffer) Packet(n int) PacketData {
 	return PacketData{

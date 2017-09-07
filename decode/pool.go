@@ -95,7 +95,7 @@ func (p *Pool) sendToWorker(w *worker) error {
 		// to avoid an extra copy
 		err = p.src.CollectPackets(w.buf())
 		if err != pcap.NextErrorTimeoutExpired {
-			p.stats.PacketsCaptured += w.buf().PacketLen()
+			p.stats.PacketsCaptured += w.buf().Len()
 			break
 		}
 	}

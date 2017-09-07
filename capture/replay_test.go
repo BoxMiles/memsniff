@@ -58,21 +58,21 @@ func TestPacing(t *testing.T) {
 	buf := NewPacketBuffer(1000, 8*1024*1024)
 
 	err := uut.CollectPackets(buf)
-	n := buf.PacketLen()
+	n := buf.Len()
 	if n != 1 {
 		t.Error(err)
 	}
 
 	// expect no more data until time has passed
 	err = uut.CollectPackets(buf)
-	n = buf.PacketLen()
+	n = buf.Len()
 	if n != 0 || err != pcap.NextErrorTimeoutExpired {
 		t.Error("got", n, "packet too early:", err)
 	}
 
 	time.Sleep(replayerTimeout)
 	err = uut.CollectPackets(buf)
-	n = buf.PacketLen()
+	n = buf.Len()
 	if n != 1 {
 		t.Error(err)
 	}
@@ -89,7 +89,7 @@ func TestDrop(t *testing.T) {
 	buf := NewPacketBuffer(1000, 8*1024*1024)
 
 	err := uut.CollectPackets(buf)
-	n := buf.PacketLen()
+	n := buf.Len()
 	if n != 1 {
 		t.Error(err)
 	}

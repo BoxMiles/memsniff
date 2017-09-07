@@ -22,34 +22,34 @@ var (
 
 type reassemblyQueue struct {
 	reassembled [maxPackets]tcpassembly.Reassembly
-	bytes       capture.BlockBuffer
+	blocks      capture.BlockBuffer
 	cursor      int
 }
 
 func newReassemblyQueue() *reassemblyQueue {
 	return &reassemblyQueue{
-		bytes: capture.NewBlockBuffer(maxPackets, maxBytes),
+		blocks: capture.NewBlockBuffer(maxPackets, maxBytes),
 	}
 }
 
 func (q *reassemblyQueue) add(reassembly []tcpassembly.Reassembly) int {
-	lenBefore := q.bytes.BlockLen()
+	lenBefore := q.blocks.Len()
 	// defensive copy of all but Bytes (overwritten below)
 	copy(q.reassembled[lenBefore:], reassembly)
 	for i, r := range reassembly {
 		// defensive copy of data
-		err := q.bytes.Append(r.Bytes)
+		err := q.blocks.Append(r.Bytes)
 		if err != nil {
 			return i
 		}
 		// repoint saved Reassembly to the copy
-		q.reassembled[lenBefore+i].Bytes = q.bytes.Block(lenBefore + i)
+		q.reassembled[lenBefore+i].Bytes = q.blocks.Block(lenBefore + i)
 	}
 	return len(reassembly)
 }
 
 func (q *reassemblyQueue) next() (*tcpassembly.Reassembly, error) {
-	if q.cursor >= q.bytes.BlockLen() {
+	if q.cursor >= q.blocks.Len() {
 		return nil, io.EOF
 	}
 	q.cursor++
@@ -58,7 +58,7 @@ func (q *reassemblyQueue) next() (*tcpassembly.Reassembly, error) {
 
 func (q *reassemblyQueue) clear() {
 	q.cursor = 0
-	q.bytes.Clear()
+	q.blocks.Clear()
 }
 
 // ErrLostData is returned when there is a gap in the
@@ -184,7 +184,7 @@ func (r *TCPReaderStream) flushBoth() {
 
 // flush sends any buffered data to the reader side.
 func (r *TCPReaderStream) flush() {
-	if r.sentEOF() || r.writeBatch.bytes.BlockLen() == 0 {
+	if r.sentEOF() || r.writeBatch.blocks.Len() == 0 {
 		return
 	}
 	r.filled <- r.writeBatch

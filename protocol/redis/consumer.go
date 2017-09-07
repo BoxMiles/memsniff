@@ -7,12 +7,14 @@ import (
 	"time"
 )
 
+// Consumer generates an event stream from a RESP conversation.
 type Consumer struct {
 	model.Consumer
 	client *Reader
 	server *Reader
 }
 
+// New returns a new Consumer using the readers in c.
 func New(c model.Consumer) *Consumer {
 	return &Consumer{
 		Consumer: c,
@@ -21,6 +23,7 @@ func New(c model.Consumer) *Consumer {
 	}
 }
 
+// Run reads the conversation and returns at the close of the conversation.
 func (c *Consumer) Run() {
 	c.Log("processing as redis protocol")
 	defer c.FlushEvents()

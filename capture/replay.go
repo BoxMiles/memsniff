@@ -47,7 +47,7 @@ func (r *replayer) CollectPackets(pb *PacketBuffer) error {
 
 	elapsed := time.Since(r.start)
 	r.dropExpired(elapsed)
-	for r.cursor >= r.buf.PacketLen() {
+	for r.cursor >= r.buf.Len() {
 		err := r.fill()
 		if err != nil {
 			return err
@@ -55,14 +55,14 @@ func (r *replayer) CollectPackets(pb *PacketBuffer) error {
 		r.dropExpired(elapsed)
 	}
 
-	l := r.buf.PacketLen()
+	l := r.buf.Len()
 	writeUntil := r.first.Add(elapsed + replayerTimeout)
 	for ; r.cursor < l && pb.BytesRemaining() >= snapLen; r.cursor++ {
 		p := r.buf.Packet(r.cursor)
 		r.received++
 		if p.Info.Timestamp.After(writeUntil) {
 			time.Sleep(replayerTimeout)
-			if pb.PacketLen() == 0 {
+			if pb.Len() == 0 {
 				return pcap.NextErrorTimeoutExpired
 			}
 			return nil
@@ -77,7 +77,7 @@ func (r *replayer) CollectPackets(pb *PacketBuffer) error {
 
 func (r *replayer) dropExpired(elapsed time.Duration) {
 	dropUntil := r.first.Add(elapsed).Add(replayerTimeout / -2)
-	for ; r.cursor < r.buf.PacketLen(); r.cursor++ {
+	for ; r.cursor < r.buf.Len(); r.cursor++ {
 		p := r.buf.Packet(r.cursor)
 		if p.Info.Timestamp.After(dropUntil) {
 			break
@@ -87,9 +87,9 @@ func (r *replayer) dropExpired(elapsed time.Duration) {
 }
 
 func (r *replayer) DiscardPacket() error {
-	if r.cursor >= r.buf.PacketLen() {
+	if r.cursor >= r.buf.Len() {
 		err := r.fill()
-		if r.buf.PacketLen() == 0 || err != nil {
+		if r.buf.Len() == 0 || err != nil {
 			return err
 		}
 	}
@@ -128,10 +128,10 @@ func (r *replayer) fill() error {
 
 func (r *replayer) String() string {
 	var nextTimestamp time.Time
-	if r.cursor < r.buf.PacketLen() {
+	if r.cursor < r.buf.Len() {
 		nextTimestamp = r.buf.Packet(r.cursor).Info.Timestamp
 	}
-	return fmt.Sprintf("{first=%v avail=%v next=%v}", r.first, r.buf.PacketLen()-r.cursor, nextTimestamp)
+	return fmt.Sprintf("{first=%v avail=%v next=%v}", r.first, r.buf.Len()-r.cursor, nextTimestamp)
 }
 
 func (r *replayer) log(items ...interface{}) {

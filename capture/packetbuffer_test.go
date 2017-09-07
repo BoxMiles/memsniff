@@ -50,8 +50,8 @@ func TestTooManyBytes(t *testing.T) {
 		t.Error("Got error from second Append:", err)
 	}
 
-	if uut.PacketLen() != 2 {
-		t.Error("PacketLen returned", uut.PacketLen(), "instead of 2")
+	if uut.Len() != 2 {
+		t.Error("Len returned", uut.Len(), "instead of 2")
 	}
 
 	err = uut.Append(pd)

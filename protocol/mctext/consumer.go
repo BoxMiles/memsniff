@@ -24,7 +24,6 @@ func New(c model.Consumer) *Consumer {
 }
 
 // Run reads the conversation and returns at the close of the conversation.
-// The client- and server-side readers are closed before Run returns.
 func (c *Consumer) Run() {
 	c.Log("processing as memcache text protocol")
 	defer c.FlushEvents()

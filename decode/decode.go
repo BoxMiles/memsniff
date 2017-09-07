@@ -123,7 +123,7 @@ func newDecoder(logger log.Logger, handler Handler) *decoder {
 //
 // decodeBatch is not threadsafe.
 func (d *decoder) decodeBatch(pb *capture.PacketBuffer) {
-	numPackets := pb.PacketLen()
+	numPackets := pb.Len()
 	if numPackets > len(d.decoded) {
 		panic("not enough space for decoded packets")
 	}

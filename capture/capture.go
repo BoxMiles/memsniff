@@ -143,7 +143,7 @@ func newLiveCapture(netInterface string, bufferSize int) (*pcap.Handle, error) {
 
 func (s source) CollectPackets(pb *PacketBuffer) error {
 	pb.Clear()
-	l := pb.PacketCap()
+	l := pb.Cap()
 	for i := 0; i < l && pb.BytesRemaining() >= snapLen; i++ {
 		// use ZeroCopyReadPacketData to avoid allocation, even though
 		// we copy the data later
