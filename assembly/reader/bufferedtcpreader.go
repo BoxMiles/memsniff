@@ -89,7 +89,7 @@ type TCPReaderStream struct {
 	readBatch *reassemblyQueue
 	// partially consumed Reassembly
 	current *tcpassembly.Reassembly
-	// buf accumulates blocks that extends over multiple Reassemblies in ReadN and ReadLine
+	// buf accumulates bytes that extends over multiple Reassemblies in ReadN and ReadLine
 	buf *bytes.Buffer
 	// seenEOF is set to true by the reader side when it sees nil on filled
 	seenEOF bool
@@ -408,10 +408,13 @@ func (r *TCPReaderStream) Close() error {
 }
 
 func (r *TCPReaderStream) ensureCurrent() (err error) {
-	if r.current != nil && (r.current.Skip > 0 || len(r.current.Bytes) > 0) {
-		return nil
+	for r.current == nil || (r.current.Skip == 0 && len(r.current.Bytes) == 0) {
+		err = r.nextReassembly()
+		if err != nil {
+			return
+		}
 	}
-	return r.nextReassembly()
+	return
 }
 
 func (r *TCPReaderStream) nextReassembly() (err error) {
