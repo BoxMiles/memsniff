@@ -82,9 +82,11 @@ func testReadText(t *testing.T, lines []string, expected []model.Event) {
 	}
 	client, server := reader.NewPair()
 	r := Consumer{
-		Handler:      handler,
-		ClientReader: client,
-		ServerReader: server,
+		Consumer: model.Consumer{
+			Handler:      handler,
+			ClientReader: client,
+			ServerReader: server,
+		},
 	}
 
 	done := make(chan struct{})

@@ -90,8 +90,8 @@ func (o *UniversalOptions) simple() *Options {
 	}
 
 	return &Options{
-		Addr:     addr,
-		DB:       o.DB,
+		Addr: addr,
+		DB:   o.DB,
 
 		MaxRetries:         o.MaxRetries,
 		Password:           o.Password,

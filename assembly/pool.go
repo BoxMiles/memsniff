@@ -13,13 +13,13 @@ type Pool struct {
 }
 
 // New creates a new pool for reassembling TCP streams.
-func New(logger log.Logger, analysis *analysis.Pool, memcachePorts []int, numWorkers int) *Pool {
+func New(logger log.Logger, analysis *analysis.Pool, ports []int, numWorkers int) *Pool {
 	p := &Pool{
 		logger,
 		make([]worker, numWorkers),
 	}
 	for i := 0; i < numWorkers; i++ {
-		p.workers[i] = newWorker(logger, analysis, memcachePorts)
+		p.workers[i] = newWorker(logger, analysis, ports)
 	}
 	return p
 }

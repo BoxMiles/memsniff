@@ -6,8 +6,7 @@ import (
 	"github.com/box/memsniff/analysis"
 	"github.com/box/memsniff/assembly/reader"
 	"github.com/box/memsniff/log"
-	"github.com/box/memsniff/protocol/mctext"
-	"github.com/box/memsniff/protocol/model"
+	"github.com/box/memsniff/protocol/inferer"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/tcpassembly"
@@ -38,16 +37,16 @@ func (c *connectionKey) DstString() string {
 }
 
 type streamFactory struct {
-	logger        log.Logger
-	analysis      *analysis.Pool
-	memcachePorts []int
+	logger   log.Logger
+	analysis *analysis.Pool
+	ports    []int
 
-	halfOpen map[connectionKey]*model.Consumer
+	halfOpen map[connectionKey]*inferer.Consumer
 }
 
 func (sf *streamFactory) IsFromServer(transportFlow gopacket.Flow) bool {
 	port := srcPort(transportFlow)
-	return isInPortlist(sf.memcachePorts, port)
+	return isInPortlist(sf.ports, port)
 }
 
 func srcPort(transportFlow gopacket.Flow) int {
@@ -76,7 +75,7 @@ func (sf *streamFactory) New(netFlow, transportFlow gopacket.Flow) tcpassembly.S
 		ck = ck.Reverse()
 	}
 
-	var c *model.Consumer
+	var c *inferer.Consumer
 	var ok bool
 	if c, ok = sf.halfOpen[ck]; ok {
 		delete(sf.halfOpen, ck)
@@ -95,19 +94,19 @@ func (sf *streamFactory) New(netFlow, transportFlow gopacket.Flow) tcpassembly.S
 	return stream
 }
 
-func (sf *streamFactory) createConsumer(ck connectionKey) *model.Consumer {
+func (sf *streamFactory) createConsumer(ck connectionKey) *inferer.Consumer {
 	client, server := reader.NewPair()
 	client.LossErrors = true
 	server.LossErrors = true
 
-	c := &mctext.Consumer{
+	c := &inferer.Consumer{
 		//Logger:       log.NewContext(sf.logger, ck.DstString()),
 		Handler:      sf.analysis.HandleEvents,
 		ClientReader: client,
 		ServerReader: server,
 	}
 	go c.Run()
-	return (*model.Consumer)(c)
+	return c
 }
 
 func (sf *streamFactory) log(items ...interface{}) {

@@ -5,7 +5,7 @@ import (
 	"github.com/box/memsniff/analysis"
 	"github.com/box/memsniff/decode"
 	"github.com/box/memsniff/log"
-	"github.com/box/memsniff/protocol/model"
+	"github.com/box/memsniff/protocol/inferer"
 	"github.com/google/gopacket/tcpassembly"
 	"time"
 )
@@ -25,13 +25,13 @@ type worker struct {
 	wiCh      chan workItem
 }
 
-func newWorker(logger log.Logger, analysis *analysis.Pool, memcachePorts []int) worker {
+func newWorker(logger log.Logger, analysis *analysis.Pool, ports []int) worker {
 	sf := streamFactory{
-		logger:        logger,
-		analysis:      analysis,
-		memcachePorts: memcachePorts,
+		logger:   logger,
+		analysis: analysis,
+		ports:    ports,
 
-		halfOpen: make(map[connectionKey]*model.Consumer),
+		halfOpen: make(map[connectionKey]*inferer.Consumer),
 	}
 	w := worker{
 		logger:    logger,
