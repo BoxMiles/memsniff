@@ -122,9 +122,9 @@ func (u *uiContext) handleNewMessage(msg string) {
 
 func renderHeader() {
 	renderText(0, 0, "Key")
-	renderText(8, 0, "Requests (est)")
+	renderText(8, 0, "Reads")
 	renderText(9, 0, "Size")
-	renderText(10, 0, "Bandwidth (est)")
+	renderText(10, 0, "Bandwidth")
 	renderLine(0, 12, 1, '-')
 }
 
@@ -136,9 +136,9 @@ func renderReport(rep analysis.Report) {
 			break
 		}
 		renderText(0, y, kr.Name)
-		renderText(8, y, strconv.Itoa(kr.RequestsEstimate))
+		renderText(8, y, strconv.Itoa(kr.GetHits))
 		renderText(9, y, strconv.Itoa(kr.Size))
-		renderText(10, y, strconv.Itoa(kr.TrafficEstimate))
+		renderText(10, y, strconv.Itoa(kr.TotalTraffic))
 	}
 }
 

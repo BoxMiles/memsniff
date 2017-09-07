@@ -1,7 +1,6 @@
 package analysis
 
 import (
-	"github.com/box/memsniff/hotlist"
 	"sort"
 	"time"
 )
@@ -12,10 +11,12 @@ type KeyReport struct {
 	Name string
 	// size of the cache value in bytes
 	Size int
-	// number of requests for this cache key
-	RequestsEstimate int
+	// number of hits for this cache key
+	GetHits int
 	// amount of bandwidth consumed by traffic for this cache key in bytes
-	TrafficEstimate int
+	TotalTraffic int
+	// true if different sizes have been seen for this key
+	VariableSize bool
 }
 
 // Report represents key activity submitted to a Pool since the last call to
@@ -23,7 +24,7 @@ type KeyReport struct {
 type Report struct {
 	// when this report was generated
 	Timestamp time.Time
-	// key reports in descending order by TrafficEstimate
+	// key reports in descending order by TotalTraffic
 	Keys []KeyReport
 }
 
@@ -33,9 +34,9 @@ func (r Report) Len() int {
 }
 
 // Less implements sort.Interface for Report, sorting KeyReports in descending
-// order by TrafficEstimate.
+// order by TotalTraffic.
 func (r Report) Less(i, j int) bool {
-	return r.Keys[j].TrafficEstimate < r.Keys[i].TrafficEstimate
+	return r.Keys[j].TotalTraffic < r.Keys[i].TotalTraffic
 }
 
 // Swap implements sort.Interface for Report.
@@ -56,40 +57,21 @@ func (r Report) Swap(i, j int) {
 // may be carried over between successive reports, and some data may be
 // lost entirely.
 func (p *Pool) Report(shouldReset bool) Report {
-	allEntries := make([]hotlist.Entry, 0, p.reportSize*len(p.workers))
+	allEntries := make([]KeyReport, 0, p.reportSize*len(p.workers))
 	for _, w := range p.workers {
-		workerEntries := w.top(p.reportSize)
+		workerEntries := w.snapshot()
 		if shouldReset {
 			w.reset()
 		}
 		allEntries = append(allEntries, workerEntries...)
 	}
 
-	reportSize := len(allEntries)
-	if reportSize > p.reportSize {
-		reportSize = p.reportSize
-	}
-
 	ret := Report{
 		Timestamp: time.Now(),
-		Keys:      make([]KeyReport, 0, reportSize),
-	}
-
-	for _, e := range allEntries {
-		ret.Keys = append(ret.Keys, keyReport(e))
+		Keys:      allEntries,
 	}
 
 	sort.Sort(ret)
 
 	return ret
-}
-
-func keyReport(e hotlist.Entry) KeyReport {
-	ki := e.Item().(keyInfo)
-	return KeyReport{
-		Name:             ki.name,
-		Size:             ki.size,
-		RequestsEstimate: e.Count(),
-		TrafficEstimate:  e.Count() * ki.size,
-	}
 }

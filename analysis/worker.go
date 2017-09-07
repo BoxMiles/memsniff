@@ -2,35 +2,21 @@ package analysis
 
 import (
 	"errors"
-	"github.com/box/memsniff/hotlist"
 	"github.com/box/memsniff/protocol/model"
 )
 
 // worker accumulates usage data for a set of cache keys.
 type worker struct {
-	// hotlist of the busiest cache keys tracked by this worker
-	hl hotlist.HotList
 	// channel for reports of cache key activity
-	kisChan chan []keyInfo
+	events chan []model.Event
 	// channel for requests for the current contents of the hotlist
-	topRequest chan int
-	// channel for results of top() requests
-	topReply chan []hotlist.Entry
+	snapshotRequest chan struct{}
+	// channel for results of snapshot() requests
+	snapshotReply chan []KeyReport
 	// channel for requests to reset the hotlist to an empty state
 	resetRequest chan bool
-}
 
-// keyInfo is the hotlist key for a cache key and value.
-// All components must be comparable for equality.
-type keyInfo struct {
-	name string
-	size int
-}
-
-// Weight implement hotlist.Item and gives each key weight equal to the size of
-// the cache value.
-func (ki keyInfo) Weight() int {
-	return ki.size
+	keyCounts map[string]*KeyReport
 }
 
 // errQueueFull is returned by handleGetResponse if the worker cannot keep
@@ -39,11 +25,11 @@ var errQueueFull = errors.New("analysis worker queue full")
 
 func newWorker() worker {
 	w := worker{
-		hl:           hotlist.NewPerfect(),
-		kisChan:      make(chan []keyInfo, 1024),
-		topRequest:   make(chan int),
-		topReply:     make(chan []hotlist.Entry),
-		resetRequest: make(chan bool),
+		events:          make(chan []model.Event, 1024),
+		snapshotRequest: make(chan struct{}),
+		snapshotReply:   make(chan []KeyReport),
+		resetRequest:    make(chan bool),
+		keyCounts:       make(map[string]*KeyReport),
 	}
 	go w.loop()
 	return w
@@ -54,33 +40,24 @@ func newWorker() worker {
 // When handleEvents returns, all relevant data from rs has been copied
 // and is safe for the caller to discard.
 func (w *worker) handleEvents(evts []model.Event) error {
-	// Make sure we copy r.Key before we return, since it may be a pointer
-	// into a buffer that will be overwritten.
-	kis := make([]keyInfo, 0, len(evts))
-	for i, evt := range evts {
-		if evt.Type == model.EventGetHit {
-			kis = kis[:i+1]
-			kis[i] = keyInfo{evt.Key, evt.Size}
-		}
-	}
 	select {
-	case w.kisChan <- kis:
+	case w.events <- evts:
 		return nil
 	default:
 		return errQueueFull
 	}
 }
 
-// top returns the current contents of the hotlist for this worker.
-// top is threadsafe.
-func (w *worker) top(k int) []hotlist.Entry {
-	w.topRequest <- k
-	return <-w.topReply
+// snapshot returns the current contents of the hotlist for this worker.
+// snapshot is threadsafe.
+func (w *worker) snapshot() []KeyReport {
+	w.snapshotRequest <- struct{}{}
+	return <-w.snapshotReply
 }
 
 // reset clear the contents of the hotlist for this worker.
 // Some data may be lost if there is no external coordination of calls
-// to top and handleGetResponse.
+// to snapshot and handleGetResponse.
 func (w *worker) reset() {
 	w.resetRequest <- true
 }
@@ -88,25 +65,62 @@ func (w *worker) reset() {
 // close exits this worker. Calls to handleGetResponse after calling close
 // will panic.
 func (w *worker) close() {
-	close(w.kisChan)
+	close(w.events)
 }
 
 func (w *worker) loop() {
 	for {
 		select {
-		case kis, ok := <-w.kisChan:
+		case evts, ok := <-w.events:
 			if !ok {
 				return
 			}
-			for _, ki := range kis {
-				w.hl.AddWeighted(ki)
+			for _, e := range evts {
+				if e.Type != model.EventGetHit {
+					continue
+				}
+
+				before, ok := w.keyCounts[e.Key]
+				if ok {
+					before.coalesceActivity(e)
+				} else {
+					w.keyCounts[e.Key] = &KeyReport{
+						Name:         e.Key,
+						Size:         e.Size,
+						GetHits:      1,
+						TotalTraffic: e.Size,
+					}
+				}
 			}
 
-		case k := <-w.topRequest:
-			w.topReply <- w.hl.Top(k)
+		case <-w.snapshotRequest:
+			w.snapshotReply <- w.copyKeyCounts()
 
 		case <-w.resetRequest:
-			w.hl.Reset()
+			for k := range w.keyCounts {
+				delete(w.keyCounts, k)
+			}
 		}
 	}
+}
+
+func (w *worker) copyKeyCounts() []KeyReport {
+	results := make([]KeyReport, 0, len(w.keyCounts))
+	for _, ka := range w.keyCounts {
+		// make copy of each KeyActivity since we export results out of this goroutine
+		results = append(results, *ka)
+	}
+	return results
+}
+
+func (kr *KeyReport) coalesceActivity(e model.Event) {
+	if e.Size != kr.Size {
+		kr.VariableSize = true
+	}
+	if e.Size > kr.Size {
+		kr.Size = e.Size
+	}
+	kr.GetHits += 1
+	kr.TotalTraffic += e.Size
+	return
 }
