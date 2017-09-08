@@ -122,9 +122,9 @@ func (u *uiContext) handleNewMessage(msg string) {
 
 func renderHeader() {
 	renderText(0, 0, "Key")
-	renderText(8, 0, "Reads")
-	renderText(9, 0, "Size")
-	renderText(10, 0, "Bandwidth")
+	renderTextRight(8, 0, "Reads")
+	renderTextRight(9, 0, "Size")
+	renderTextRight(11, 0, "Bandwidth")
 	renderLine(0, 12, 1, '-')
 }
 
@@ -135,10 +135,14 @@ func renderReport(rep analysis.Report) {
 		if y > lastY {
 			break
 		}
+		leader := ' '
+		if kr.VariableSize {
+			leader = '~'
+		}
 		renderText(0, y, kr.Name)
-		renderText(8, y, strconv.Itoa(kr.GetHits))
-		renderText(9, y, strconv.Itoa(kr.Size))
-		renderText(10, y, strconv.Itoa(kr.TotalTraffic))
+		renderInt(8, y, kr.GetHits, ' ')
+		renderInt(9, y, kr.Size, leader)
+		renderInt(11, y, kr.TotalTraffic, ' ')
 	}
 }
 
@@ -153,7 +157,7 @@ func (u *uiContext) renderFooter(rep analysis.Report) {
 	stats := u.statProvider()
 	renderText(0, y, rep.Timestamp.Format("15:04:05.000"))
 
-	renderText(2, y, dropLabel(stats))
+	renderText(1, y, dropLabel(stats))
 	renderText(4, y, fmt.Sprintf("Packets: %10d", stats.PacketsPassedFilter))
 	renderText(6, y, fmt.Sprintf("GET responses: %10d", stats.ResponsesParsed))
 }
@@ -172,13 +176,28 @@ func dropLabel(s Stats) string {
 }
 
 func renderText(column int, y int, txt string) {
-	x := columnX(column)
+	renderTextX(columnX(column), y, txt)
+}
+
+func renderTextRight(column int, y int, txt string) {
+	lastX := columnX(column + 1)
+	renderTextX(lastX - len(txt), y, txt)
+}
+
+func renderTextX(x, y int, txt string) {
 	runes := []rune(txt)
 
 	for _, r := range runes {
 		termbox.SetCell(x, y, r, termbox.ColorDefault, termbox.ColorDefault)
 		x += runewidth.RuneWidth(r)
 	}
+}
+
+func renderInt(column int, y int, n int, leader rune) {
+	str := strconv.Itoa(n)
+	lastX := columnX(column + 1)
+	termbox.SetCell(lastX - len(str) - 1, y, leader, termbox.ColorDefault, termbox.ColorDefault)
+	renderTextX(lastX - len(str), y, str)
 }
 
 func renderLine(column int, span int, y int, ch rune) {
