@@ -4,10 +4,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/box/memsniff/protocol/model"
+	"math"
 	"os"
 	"os/signal"
 	"time"
+
+	"github.com/box/memsniff/protocol/model"
 
 	"github.com/box/memsniff/analysis"
 	"github.com/box/memsniff/assembly"
@@ -35,8 +37,9 @@ var (
 	interval   = flag.IntP("interval", "n", 1, "report top keys every this many seconds")
 	cumulative = flag.Bool("cumulative", false, "accumulate keys over all time instead of an interval")
 
-	noDelay = flag.Bool("nodelay", false, "replay from file at maximum speed instead of rate of original capture")
-	noGui   = flag.Bool("nogui", false, "disable interactive interface")
+	noDelay  = flag.Bool("nodelay", false, "replay from file at maximum speed instead of rate of original capture")
+	noGui    = flag.Bool("nogui", false, "disable interactive interface")
+	dropRate = flag.Float64("dropRate", 0, "% of packets to drop (0-100)")
 
 	displayVersion = flag.Bool("version", false, "display version information")
 )
@@ -79,7 +82,8 @@ func main() {
 		os.Exit(2)
 	}
 
-	decodePool := decode.NewPool(logger, *decodeWorkers, packetSource, packetHandler(protocolType, analysisPool))
+	dropThresh := uint64(float64(math.MaxUint64) * (*dropRate / 100))
+	decodePool := decode.NewPool(logger, *decodeWorkers, packetSource, packetHandler(protocolType, analysisPool), dropThresh)
 	eofChan := make(chan struct{}, 1)
 	go func() {
 		decodePool.Run()

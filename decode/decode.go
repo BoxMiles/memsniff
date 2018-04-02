@@ -1,6 +1,8 @@
 package decode
 
 import (
+	"hash"
+	"hash/fnv"
 	"github.com/box/memsniff/capture"
 	"github.com/box/memsniff/log"
 	"github.com/google/gopacket"
@@ -103,13 +105,17 @@ type decoder struct {
 	logger        log.Logger
 	handler       Handler
 	largestPacket int
+	hash       hash.Hash64
+	dropThresh uint64
 	decoded       []*DecodedPacket
 }
 
-func newDecoder(logger log.Logger, handler Handler) *decoder {
+func newDecoder(logger log.Logger, handler Handler, dropThresh uint64) *decoder {
 	d := &decoder{
 		logger:  logger,
 		handler: handler,
+		hash: fnv.New64a(),
+		dropThresh: dropThresh,
 		decoded: make([]*DecodedPacket, batchSize),
 	}
 	for i := 0; i < len(d.decoded); i++ {
@@ -127,11 +133,15 @@ func (d *decoder) decodeBatch(pb *capture.PacketBuffer) {
 	if numPackets > len(d.decoded) {
 		panic("not enough space for decoded packets")
 	}
+	var w int
 	for i := 0; i < numPackets; i++ {
 		pd := pb.Packet(i)
-		d.decoded[i].decode(d, pd.Info, pd.Data)
+		if !d.shouldDrop(pd.Data) {
+			d.decoded[w].decode(d, pd.Info, pd.Data)
+			w++
+		}
 	}
-	d.handler(d.decoded[:numPackets])
+	d.handler(d.decoded[:w])
 }
 
 // based on boost::hash_combine
@@ -148,4 +158,10 @@ func hashCombine(h, k uint64) uint64 {
 	h *= m
 
 	return h + 0xe6546b64
+}
+
+func (d *decoder) shouldDrop(data []byte) bool {
+	d.hash.Reset()
+	d.hash.Write(data)
+	return d.hash.Sum64() < d.dropThresh
 }

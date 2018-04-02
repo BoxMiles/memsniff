@@ -32,7 +32,7 @@ type Pool struct {
 // NewPool creates a new Pool of workers.  As packets are captured and decoded,
 // handler is invoked.  handler is invoked from multiple worker gorountines
 // concurrently and thus must be threadsafe.
-func NewPool(logger log.Logger, numWorkers int, src capture.PacketSource, handler Handler) *Pool {
+func NewPool(logger log.Logger, numWorkers int, src capture.PacketSource, handler Handler, dropThresh uint64) *Pool {
 	p := &Pool{
 		logger:     logger,
 		numWorkers: numWorkers,
@@ -41,7 +41,7 @@ func NewPool(logger log.Logger, numWorkers int, src capture.PacketSource, handle
 	}
 
 	for i := 0; i < numWorkers; i++ {
-		decoder := newDecoder(logger, handler)
+		decoder := newDecoder(logger, handler, dropThresh)
 		p.startWorker(p.readyQ, decoder.decodeBatch, 1000, 8*1024*1024, i)
 	}
 
