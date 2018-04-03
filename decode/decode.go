@@ -3,6 +3,7 @@ package decode
 import (
 	"hash"
 	"hash/fnv"
+
 	"github.com/box/memsniff/capture"
 	"github.com/box/memsniff/log"
 	"github.com/google/gopacket"
@@ -105,18 +106,18 @@ type decoder struct {
 	logger        log.Logger
 	handler       Handler
 	largestPacket int
-	hash       hash.Hash64
-	dropThresh uint64
+	hash          hash.Hash64
+	dropThresh    uint64
 	decoded       []*DecodedPacket
 }
 
 func newDecoder(logger log.Logger, handler Handler, dropThresh uint64) *decoder {
 	d := &decoder{
-		logger:  logger,
-		handler: handler,
-		hash: fnv.New64a(),
+		logger:     logger,
+		handler:    handler,
+		hash:       fnv.New64a(),
 		dropThresh: dropThresh,
-		decoded: make([]*DecodedPacket, batchSize),
+		decoded:    make([]*DecodedPacket, batchSize),
 	}
 	for i := 0; i < len(d.decoded); i++ {
 		d.decoded[i] = newDecodedPacket()
@@ -163,5 +164,6 @@ func hashCombine(h, k uint64) uint64 {
 func (d *decoder) shouldDrop(data []byte) bool {
 	d.hash.Reset()
 	d.hash.Write(data)
-	return d.hash.Sum64() < d.dropThresh
+	h := d.hash.Sum64() & 0xFFFFFFFF
+	return h < d.dropThresh
 }

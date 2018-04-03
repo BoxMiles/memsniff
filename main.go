@@ -82,7 +82,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	dropThresh := uint64(float64(math.MaxUint64) * (*dropRate / 100))
+	dropThresh := uint64(float64(math.MaxUint32) * (*dropRate / 100))
 	decodePool := decode.NewPool(logger, *decodeWorkers, packetSource, packetHandler(protocolType, analysisPool), dropThresh)
 	eofChan := make(chan struct{}, 1)
 	go func() {

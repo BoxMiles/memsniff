@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strconv"
 )
 
 type Buffer struct {
@@ -154,6 +155,21 @@ func (b *Buffer) Discard(n int) {
 	b.len = 0
 	b.blocks = b.blocks[:0]
 	b.discard += toDiscard
+}
+
+func (b *Buffer) String() string {
+	var out bytes.Buffer
+	start := 0
+	for _, block := range b.blocks {
+		if block.gap > 0 {
+			out.WriteString("<gap ")
+			out.WriteString(strconv.Itoa(block.gap))
+			out.WriteString(">")
+		}
+		out.Write(b.buf.Bytes()[start : start+block.dataLen])
+		start += b.len
+	}
+	return out.String()
 }
 
 func (b *Buffer) contiguousAvailable() (avail int, gap int) {

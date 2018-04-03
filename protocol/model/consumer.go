@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/box/memsniff/assembly/reader"
+	"github.com/box/memsniff/log"
 	"github.com/google/gopacket/tcpassembly"
 )
 
@@ -75,18 +76,23 @@ type Consumer struct {
 	// ServerReader exposes data send by the server to the client.
 	ServerReader *reader.Reader
 
-	Fsm      Fsm
+	Fsm Fsm
+
+	logger   log.Logger
 	eventBuf []Event
 }
 
-func New(handler EventHandler, fsm Fsm) *Consumer {
+func New(logger log.Logger, handler EventHandler, fsm Fsm) *Consumer {
 	cr := bufferPool.Get().(*reader.Reader)
+	// logger.Log("using Reader", cr.ID, "for client")
 	sr := bufferPool.Get().(*reader.Reader)
+	// logger.Log("using Reader", sr.ID, "for server")
 	c := &Consumer{
 		Handler:      handler,
 		ClientReader: cr,
 		ServerReader: sr,
 		Fsm:          fsm,
+		logger:       logger,
 	}
 	fsm.SetConsumer(c)
 	return c
@@ -109,13 +115,15 @@ func (c *Consumer) FlushEvents() {
 
 func (c *Consumer) Close() {
 	if c.ClientReader != eofSource {
-		c.ClientReader.Reset()
-		bufferPool.Put(c.ClientReader)
+		// c.ClientReader.Reset()
+		// c.logger.Log("returning", c.ClientReader.ID, "to pool after Close")
+		// bufferPool.Put(c.ClientReader)
 		c.ClientReader = eofSource
 	}
 	if c.ServerReader != eofSource {
-		c.ServerReader.Reset()
-		bufferPool.Put(c.ServerReader)
+		// c.ServerReader.Reset()
+		// c.logger.Log("returning", c.ServerReader.ID, "to pool after Close")
+		// bufferPool.Put(c.ServerReader)
 		c.ServerReader = eofSource
 	}
 	c.Fsm = noopFsm{}
@@ -143,8 +151,9 @@ func (cs *ClientStream) ReassemblyComplete() {
 	cs.ClientReader.ReassemblyComplete()
 	(*Consumer)(cs).FlushEvents()
 	if cs.ClientReader != eofSource {
-		cs.ClientReader.Reset()
-		bufferPool.Put(cs.ClientReader)
+		// cs.ClientReader.Reset()
+		// cs.logger.Log("returning", cs.ClientReader.ID, "to pool after ReassemblyComplete")
+		// bufferPool.Put(cs.ClientReader)
 		cs.ClientReader = eofSource
 	}
 }
@@ -163,8 +172,9 @@ func (ss *ServerStream) ReassemblyComplete() {
 	ss.ServerReader.ReassemblyComplete()
 	(*Consumer)(ss).FlushEvents()
 	if ss.ServerReader != eofSource {
-		ss.ServerReader.Reset()
-		bufferPool.Put(ss.ServerReader)
+		// ss.ServerReader.Reset()
+		// ss.logger.Log("returning", ss.ServerReader.ID, "to pool after ReassemblyComplete")
+		// bufferPool.Put(ss.ServerReader)
 		ss.ServerReader = eofSource
 	}
 }

@@ -2,6 +2,8 @@ package reader
 
 import (
 	"io"
+	"log"
+	"sync/atomic"
 
 	"github.com/google/gopacket/tcpassembly"
 )
@@ -10,9 +12,14 @@ const (
 	BufferSize = 32 * 1024
 )
 
+var (
+	readerID int64
+)
+
 // Reader implements the model.ConsumerSource interface using a Buffer.
 type Reader struct {
-	buf    Buffer
+	ID     int64
+	buf    *Buffer
 	closed bool
 	eof    bool
 	err    error
@@ -20,7 +27,8 @@ type Reader struct {
 
 func New() *Reader {
 	return &Reader{
-		buf: *NewBuffer(BufferSize),
+		ID:  atomic.AddInt64(&readerID, 1),
+		buf: NewBuffer(BufferSize),
 	}
 }
 
@@ -117,7 +125,12 @@ func (r *Reader) ReadLine() (out []byte, err error) {
 }
 
 func (r *Reader) Close() error {
+	log.Println("Close() called on Reader")
 	r.closed = true
 	r.buf.Reset()
 	return nil
+}
+
+func (r *Reader) String() string {
+	return r.buf.String()
 }

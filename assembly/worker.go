@@ -2,9 +2,11 @@ package assembly
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/box/memsniff/analysis"
+	"github.com/box/memsniff/debug"
 	"github.com/box/memsniff/decode"
 	"github.com/box/memsniff/log"
 	"github.com/box/memsniff/protocol/model"
@@ -21,9 +23,11 @@ type workItem struct {
 }
 
 type worker struct {
-	logger    log.Logger
-	assembler *tcpassembly.Assembler
-	wiCh      chan workItem
+	id            uint64
+	logger        log.Logger
+	streamFactory *streamFactory
+	assembler     *tcpassembly.Assembler
+	wiCh          chan workItem
 }
 
 func newWorker(logger log.Logger, analysis *analysis.Pool, protocol model.ProtocolType, ports []int) worker {
@@ -36,9 +40,10 @@ func newWorker(logger log.Logger, analysis *analysis.Pool, protocol model.Protoc
 		halfOpen: make(map[connectionKey]*model.Consumer),
 	}
 	w := worker{
-		logger:    logger,
-		assembler: tcpassembly.NewAssembler(tcpassembly.NewStreamPool(&sf)),
-		wiCh:      make(chan workItem, 128),
+		logger:        logger,
+		streamFactory: &sf,
+		assembler:     tcpassembly.NewAssembler(tcpassembly.NewStreamPool(&sf)),
+		wiCh:          make(chan workItem, 128),
 	}
 	// Don't let the Assembly buffer much data in an attempt to compensate for out-of-order
 	// and missing packets.  Just report the data as lost downstream and continue.
@@ -58,6 +63,11 @@ func (w worker) handlePackets(dps []*decode.DecodedPacket, doneCh chan<- struct{
 }
 
 func (w worker) loop() {
+	w.id = debug.GetGID()
+	contextLogger := log.NewContext(w.logger, fmt.Sprint("[assembly ", w.id, "]"))
+	w.logger = contextLogger
+	w.streamFactory.logger = contextLogger
+
 	ticker := time.NewTicker(time.Second)
 	var mostRecent time.Time
 	for {

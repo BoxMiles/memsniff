@@ -112,7 +112,7 @@ func (sf *streamFactory) createConsumer(ck connectionKey) *model.Consumer {
 	case model.ProtocolRedis:
 		fsm = redis.NewFsm(logger)
 	}
-	return model.New(sf.analysis.HandleEvents, fsm)
+	return model.New(sf.logger, sf.analysis.HandleEvents, fsm)
 }
 
 func (sf *streamFactory) log(items ...interface{}) {

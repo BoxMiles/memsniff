@@ -36,6 +36,9 @@ func (f *fsm) SetConsumer(consumer *model.Consumer) {
 }
 
 func (f *fsm) Run() {
+	f.log("Starting Run")
+	f.log("Client: ", f.consumer.ClientReader)
+	f.log("Server: ", f.consumer.ServerReader)
 	for {
 		err := f.state()
 		switch err {
@@ -44,6 +47,7 @@ func (f *fsm) Run() {
 		case reader.ErrShortRead, io.EOF:
 			return
 		default:
+			f.log("Error: ", err)
 			f.consumer.ClientReader.Reset()
 			f.consumer.ServerReader.Reset()
 			f.transitionTo(false, f.readCommand)
@@ -64,6 +68,7 @@ func (f *fsm) transitionTo(fromServer bool, state state) {
 }
 
 func (f *fsm) readCommand() error {
+	// f.log("calling Truncate on Reader", f.consumer.ServerReader.ID)
 	f.consumer.ServerReader.Truncate()
 	err := f.parser.Run()
 	if err != nil {
@@ -91,17 +96,20 @@ func (f *fsm) handleGet(key []byte) func() error {
 			return err
 		}
 		res := f.parser.Result()
-		if res == nil {
+		switch res.(type) {
+		case nil:
 			f.consumer.AddEvent(model.Event{
 				Type: model.EventGetMiss,
 				Key:  string(key),
 			})
-		} else {
+		case int:
 			f.consumer.AddEvent(model.Event{
 				Type: model.EventGetHit,
 				Key:  string(key),
 				Size: res.(int),
 			})
+		default:
+			return ProtocolErr
 		}
 		f.transitionTo(false, f.readCommand)
 		return nil

@@ -49,6 +49,7 @@ func (p *Pool) partition(dps []*decode.DecodedPacket) [][]*decode.DecodedPacket 
 	perWorker := make([][]*decode.DecodedPacket, len(p.workers))
 	for _, dp := range dps {
 		s := p.slot(dp)
+		// p.Logger.Log(dp.NetFlow, dp.TCP.TransportFlow(), "has FlowHash", dp.FlowHash, "and hashed to slot", s)
 		perWorker[s] = append(perWorker[s], dp)
 	}
 	return perWorker
